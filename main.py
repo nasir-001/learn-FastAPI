@@ -1,6 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -73,8 +73,20 @@ async def read_file(file_path: str):
 fake_items_db = [{"item_name": "Foo"}, {"item_name": "Bar"}, {"item_name": "Baz"}]
 
 @app.get("/items/")
-async def read_item(skip: int = 0, limit: int = 10):
-  return fake_items_db[skip : skip + limit]
+async def read_item(q: Optional[str] = Query(
+  None, 
+  title="Query string",
+  description="Query string for the search items in the database that a good match",
+  min_length=3,
+  max_length=50,
+  regex="^fixedquery",
+  deprecated=True
+  )
+):
+  results = {"items": [{"item_d": "Foo"}, {"item_id": "Bar"}]}
+  if q:
+    results.update({"q": q})
+  return results
 
 @app.get("/users/{user_id}/items/{item_id}")
 async def read_user_item(

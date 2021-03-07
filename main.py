@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Query
 from enum import Enum
 from typing import List, Optional
+from fastapi.param_functions import Path
 
 from pydantic import BaseModel
 
@@ -38,12 +39,6 @@ async def create_item(item_id: int, item: Item, q: Optional[str] = None):
     result.update({"q": q})
   return result
 
-
-@app.get("/items/{item_id}")
-async def get_user_item(item_id:  str, needy: str):
-  item = {"item_id": item_id, "needy": needy}
-  return item
-
 @app.get('/users/me')
 async def read_user_me():
   return {"user_id": "the current user"}
@@ -72,18 +67,13 @@ async def read_file(file_path: str):
 
 fake_items_db = [{"item_name": "Foo"}, {"item_name": "Bar"}, {"item_name": "Baz"}]
 
-@app.get("/items/")
-async def read_item(q: Optional[str] = Query(
-  None, 
-  title="Query string",
-  description="Query string for the search items in the database that a good match",
-  min_length=3,
-  max_length=50,
-  regex="^fixedquery",
-  deprecated=True
-  )
+@app.get("/items/{item_id}")
+async def read_item(
+  *, item_id: int = Path(..., title="The ID of the item to get", gt=0, le=100), 
+  q: str,
+  size: float = Query(..., gt=0, lt=10.5)
 ):
-  results = {"items": [{"item_d": "Foo"}, {"item_id": "Bar"}]}
+  results = {"items": item_id}
   if q:
     results.update({"q": q})
   return results
@@ -101,9 +91,4 @@ async def read_user_item(
         "description": "This is an amazing item that has a long description"
       }
     )
-  return item
-
-@app.get("/items/{item_id}")
-async def read_user_item(item_id: str, needy: str, skip: int = 0, limit: Optional[int] = None):
-  item = {"item_id": item_id, "needy": needy, "skip": skip, "limit": limit}
   return item

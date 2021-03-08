@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Dict, List, Set, Optional
 from fastapi.param_functions import Body, Path
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, EmailStr
 
 class ModelName(str, Enum):
   alexnet = "alexnet"
@@ -20,8 +20,8 @@ class Item(BaseModel):
   name: str
   description: Optional[str] = None
   price: float
-  tax: Optional[float] = None
-  tags: Set[str] = set()
+  tax: float = 10.5
+  tags: List[str] = []
   image: Optional[List[Image]] = None
 
 class User(BaseModel):
@@ -34,13 +34,37 @@ class Offer(BaseModel):
   price: float
   items: List[Item]
 
+class UserIn(BaseModel):
+  username: str
+  password: str
+  email: EmailStr
+  full_name: Optional[str] = None
+
+class UserOut(BaseModel):
+  username: str
+  email: EmailStr
+  full_name: Optional[str] = None
+
 app = FastAPI()
 
-# first step
+items = {
+  "foo": {"name": "Foo", "price": 50.2},
+  "bar": {"name": "Bar", "description": "The Bar fighters", "price": 62, "tax": 20.2},
+  "baz": {
+    "name": "Baz",
+    "description": "There goes my baz",
+    "price": 50.2,
+    "tax": 10.5,
+  },
+}
 
 @app.get('/')
 async def read_root():
   return {"Hello": "World"}
+
+@app.post("/user/", response_model=UserOut)
+async def create_user(user: UserIn):
+  return user
 
 @app.post("/offers/")
 async def create_offer(offer: Offer):
@@ -54,13 +78,9 @@ async def create_index_weight(weights: Dict[int, float]):
 async def create_mutiple_images(images: List[Image]):
   return images
 
-@app.post("/items/")
+@app.post("/items/", response_model=Item)
 async def create_item(item: Item):
-  item_dict = item.dict()
-  if item.tax:
-    price_with_tax = item.price + item.tax
-    item_dict.update({"price_with_tax": price_with_tax})
-  return item_dict
+  return item
 
 @app.get("/items/")
 async def reat_items(ads_in: Optional[str] = Cookie(None)):
@@ -112,21 +132,15 @@ async def get_model(model_name: ModelName):
 async def read_file(file_path: str):
   return {"file_path": file_path}
 
-# Query parameters
-
 fake_items_db = [{"item_name": "Foo"}, {"item_name": "Bar"}, {"item_name": "Baz"}]
 
-@app.get("/items/{item_id}")
-async def read_item(
-  *, 
-  item_id: int = Path(..., title="The ID of the item to get", gt=0, le=100), 
-  q: str,
-  size: float = Query(..., gt=0, lt=10.5)
-):
-  results = {"items": item_id}
-  if q:
-    results.update({"q": q})
-  return results
+@app.get("/items/{item_id}", response_model=Item, response_model_include=["name", "description"])
+async def read_item(item_id: str):
+  return items[item_id]
+
+@app.get("/items/{item_id}/public", response_model=Item, response_model_exclude=["tax"])
+async def read_item_public_data(item_id: str):
+  return items[item_id]
 
 @app.get("/users/{user_id}/items/{item_id}")
 async def read_user_item(

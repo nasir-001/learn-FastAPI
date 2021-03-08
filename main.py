@@ -1,27 +1,36 @@
 from fastapi import FastAPI, Query
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Set, Optional
 from fastapi.param_functions import Body, Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, HttpUrl
 
 class ModelName(str, Enum):
   alexnet = "alexnet"
   resnet = "resnet"
   lenet = "lenet"
 
+class Image(BaseModel):
+  url: HttpUrl
+  name: str
+
 class Item(BaseModel):
   name: str
-  description: Optional[str] = Field(
-    None, title="The description of the item",
-    max_length=3000
-  )
-  price: float = Field(..., gt=0, description="The price must be greater than zero")
+  description: Optional[str] = None
+  price: float
   tax: Optional[float] = None
+  tags: Set[str] = set()
+  image: Optional[List[Image]] = None
 
 class User(BaseModel):
   username: str
   full_name: Optional[str] = None
+
+class Offer(BaseModel):
+  name: str
+  description: Optional[str] = None
+  price: float
+  items: List[Item]
 
 app = FastAPI()
 
@@ -30,6 +39,18 @@ app = FastAPI()
 @app.get('/')
 async def read_root():
   return {"Hello": "World"}
+
+@app.post("/offers/")
+async def create_offer(offer: Offer):
+  return offer
+
+@app.post("/index-weights/")
+async def create_index_weight(weights: Dict[int, float]):
+  return weights
+
+@app.post("/images/multiple")
+async def create_mutiple_images(images: List[Image]):
+  return images
 
 @app.post("/items/")
 async def create_item(item: Item):
@@ -40,9 +61,9 @@ async def create_item(item: Item):
   return item_dict
 
 @app.put("/items/{item_id}")
-async def update_item(item_id: int, item: Item = Body(..., embed=True)):
-  result = {"item_id": item_id, "item": item}
-  return result
+async def update_item(item_id: int, item: Item):
+  results = {"item_id": item_id, "item": item}
+  return results
 
 @app.get('/users/me')
 async def read_user_me():

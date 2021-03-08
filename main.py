@@ -3,7 +3,7 @@ from enum import Enum
 from typing import List, Optional
 from fastapi.param_functions import Body, Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class ModelName(str, Enum):
   alexnet = "alexnet"
@@ -12,8 +12,11 @@ class ModelName(str, Enum):
 
 class Item(BaseModel):
   name: str
-  description: Optional[str] = None
-  price: float
+  description: Optional[str] = Field(
+    None, title="The description of the item",
+    max_length=3000
+  )
+  price: float = Field(..., gt=0, description="The price must be greater than zero")
   tax: Optional[float] = None
 
 class User(BaseModel):

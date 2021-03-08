@@ -1,6 +1,6 @@
 from datetime import date, datetime, time, timedelta
 from uuid import UUID
-from fastapi import FastAPI, Query
+from fastapi import Cookie, FastAPI, Query
 from enum import Enum
 from typing import Dict, List, Set, Optional
 from fastapi.param_functions import Body, Path
@@ -61,6 +61,10 @@ async def create_item(item: Item):
     price_with_tax = item.price + item.tax
     item_dict.update({"price_with_tax": price_with_tax})
   return item_dict
+
+@app.get("/items/")
+async def reat_items(ads_in: Optional[str] = Cookie(None)):
+  return {"ads_in": ads_in}
 
 @app.put("/items/{item_id}")
 async def update_item(

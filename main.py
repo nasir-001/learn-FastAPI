@@ -1,6 +1,6 @@
 from datetime import date, datetime, time, timedelta
 from uuid import UUID
-from fastapi import Cookie, FastAPI, Query, status
+from fastapi import Cookie, FastAPI, Query, status, Form
 from enum import Enum
 from typing import Dict, List, Set, Optional, Union
 from fastapi.param_functions import Body, Path
@@ -189,3 +189,8 @@ async def read_user_item(
       }
     )
   return item
+
+
+@app.post("/login/")
+async def login(username: str = Form(...), password: str = Form(...)):
+  return {"username": username}

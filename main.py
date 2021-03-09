@@ -1,9 +1,10 @@
 from datetime import date, datetime, time, timedelta
 from uuid import UUID
-from fastapi import Cookie, FastAPI, Query, status, Form
+from fastapi import Cookie, FastAPI, Query, status, Form, File, UploadFile
 from enum import Enum
 from typing import Dict, List, Set, Optional, Union
 from fastapi.param_functions import Body, Path
+from fastapi.responses import HTMLResponse
 
 from pydantic import BaseModel, HttpUrl, EmailStr
 
@@ -80,10 +81,6 @@ items = {
 @app.get("/keyword-weights/", response_model=Dict[str, float])
 async def read_keyword_weights():
   return {"foo": 2.3, "bar": 3.4}
-
-@app.get('/')
-async def read_root():
-  return {"Hello": "World"}
 
 def fake_password_hasher(raw_password: str):
   return "secret" + raw_password
@@ -194,3 +191,27 @@ async def read_user_item(
 @app.post("/login/")
 async def login(username: str = Form(...), password: str = Form(...)):
   return {"username": username}
+
+@app.post("/files/")
+async def create_file(file: List[bytes] = File(...)):
+  return {"filesize": len(file)}
+
+@app.post("/uploadfile/")
+async def create_upload_file(file: List[UploadFile] = File(...)):
+  return {"filename": file.filename}
+
+@app.get("/")
+async def main():
+  content = """
+    <body>
+      <form action="/files/" enctype="multipart/form-data" method="post">
+        <input name="files" type="file" multiple>
+        <input type="submit">
+      </form>
+      <form action="/uploadfiles/" enctype="multipart/form-data" method="post">
+        <input name="files" type="file" multiple>
+        <input type="submit">
+      </form>
+    </body>
+  """
+  return HTMLResponse(content=content)

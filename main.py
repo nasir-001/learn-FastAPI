@@ -2,7 +2,7 @@ from datetime import date, datetime, time, timedelta
 from uuid import UUID
 from fastapi import Cookie, FastAPI, Query
 from enum import Enum
-from typing import Dict, List, Set, Optional
+from typing import Dict, List, Set, Optional, Union
 from fastapi.param_functions import Body, Path
 
 from pydantic import BaseModel, HttpUrl, EmailStr
@@ -34,16 +34,35 @@ class Offer(BaseModel):
   price: float
   items: List[Item]
 
-class UserIn(BaseModel):
+class UserBase(BaseModel):
   username: str
-  password: str
   email: EmailStr
   full_name: Optional[str] = None
 
-class UserOut(BaseModel):
-  username: str
-  email: EmailStr
-  full_name: Optional[str] = None
+class UserIn(UserBase):
+  password: str
+  
+class UserOut(UserBase):
+  pass
+
+class UserInDB(UserBase):
+  hashed_password: str
+
+class BaseItem(BaseModel):
+  description: str
+  type: str
+
+class CarItem(BaseItem):
+  type = "car"
+
+class PlaneItem(BaseItem):
+  type = "plane"
+  size: int
+
+items = [
+  {"name": "Foo", "description": "There comes my hero"},
+  {"name": "Red", "description": "It's my aeroplane"},
+]
 
 app = FastAPI()
 
@@ -58,13 +77,27 @@ items = {
   },
 }
 
+@app.get("/keyword-weights/", response_model=Dict[str, float])
+async def read_keyword_weights():
+  return {"foo": 2.3, "bar": 3.4}
+
 @app.get('/')
 async def read_root():
   return {"Hello": "World"}
 
+def fake_password_hasher(raw_password: str):
+  return "secret" + raw_password
+
+def fake_save_user(user_in: UserIn):
+  hashed_password = fake_password_hasher(user_in.password)
+  user_in_db = UserInDB(**user_in.dict(), hashed_password=hashed_password)
+  print("User saved! ..not really")
+  return user_in_db
+
 @app.post("/user/", response_model=UserOut)
-async def create_user(user: UserIn):
-  return user
+async def create_user(user_in: UserIn):
+  user_saved = fake_save_user(user_in)
+  return user_saved
 
 @app.post("/offers/")
 async def create_offer(offer: Offer):
@@ -134,7 +167,7 @@ async def read_file(file_path: str):
 
 fake_items_db = [{"item_name": "Foo"}, {"item_name": "Bar"}, {"item_name": "Baz"}]
 
-@app.get("/items/{item_id}", response_model=Item, response_model_include=["name", "description"])
+@app.get("/items/{item_id}", response_model=Union[PlaneItem, CarItem])
 async def read_item(item_id: str):
   return items[item_id]
 

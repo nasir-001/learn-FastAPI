@@ -1,6 +1,6 @@
 from datetime import date, datetime, time, timedelta
 from uuid import UUID
-from fastapi import Cookie, FastAPI, Query
+from fastapi import Cookie, FastAPI, Query, status
 from enum import Enum
 from typing import Dict, List, Set, Optional, Union
 from fastapi.param_functions import Body, Path
@@ -111,9 +111,9 @@ async def create_index_weight(weights: Dict[int, float]):
 async def create_mutiple_images(images: List[Image]):
   return images
 
-@app.post("/items/", response_model=Item)
-async def create_item(item: Item):
-  return item
+@app.post("/items/", status_code=status.HTTP_201_CREATED)
+async def create_item(name: str):
+  return {"name": name}
 
 @app.get("/items/")
 async def reat_items(ads_in: Optional[str] = Cookie(None)):

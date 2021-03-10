@@ -256,7 +256,7 @@ async def read_item(item_id: int):
   "/itemss/", 
   tags=["testing"],
   response_description="The created item",
-  deprecated=True
+  deprecated=True 
 )
 async def creating(item: Items):
   """

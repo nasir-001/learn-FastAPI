@@ -241,12 +241,31 @@ async def validation_exception_handler(request, exc):
     content=jsonable_encoder({"detail": exc.errors(), "body": exc.body}),
   )
   
-@app.get("/items/{item_id}")
+@app.get(
+  "/items/{item_id}", 
+  tags=["testing"], 
+  summary="Testing Summary", 
+  description="This is the description for this paths"
+)
 async def read_item(item_id: int):
   if item_id == 3:
     raise HTTPException(status_code=418, detail="Nope! I don't like 3.")
   return {"item_id": item_id}
 
-@app.post("/itemss/")
+@app.post(
+  "/itemss/", 
+  tags=["testing"],
+  response_description="The created item",
+  deprecated=True
+)
 async def creating(item: Items):
+  """
+    Create an item with all the information:
+
+    - **name**: each item must have a name
+    - **description**: a long description
+    - **price**: required
+    - **tax**: if the item doesn't have tax, you can omit this
+    - **tags**: a set of unique tag strings for this item
+    """
   return item

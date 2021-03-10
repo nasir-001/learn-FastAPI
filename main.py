@@ -69,6 +69,11 @@ class PlaneItem(BaseItem):
   type = "plane"
   size: int
 
+class Encode(BaseModel):
+  title: str
+  timestamp: datetime
+  description: Optional[str] = None
+
 class UnicornException(Exception):
   def __init__(self, name: str):
     self.name = name
@@ -269,3 +274,8 @@ async def creating(item: Items):
     - **tags**: a set of unique tag strings for this item
     """
   return item
+
+@app.put("/items/{id}")
+def update_item(id: str, item: Encode):
+  json_compatible_item_data = jsonable_encoder(item)
+  

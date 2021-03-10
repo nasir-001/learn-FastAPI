@@ -1,12 +1,17 @@
 from datetime import date, datetime, time, timedelta
 from uuid import UUID
-from fastapi import Cookie, FastAPI, Query, status, Form, File, UploadFile
+from fastapi import Cookie, FastAPI, Query, status, Form, File, UploadFile, HTTPException, Request
 from enum import Enum
 from typing import Dict, List, Set, Optional, Union
+from fastapi.encoders import jsonable_encoder
 from fastapi.param_functions import Body, Path
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
 
 from pydantic import BaseModel, HttpUrl, EmailStr
+from starlette.applications import Starlette
+from starlette.responses import PlainTextResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 class ModelName(str, Enum):
   alexnet = "alexnet"
@@ -24,6 +29,10 @@ class Item(BaseModel):
   tax: float = 10.5
   tags: List[str] = []
   image: Optional[List[Image]] = None
+
+class Items(BaseModel):
+  title: str
+  size: int
 
 class User(BaseModel):
   username: str
@@ -60,23 +69,13 @@ class PlaneItem(BaseItem):
   type = "plane"
   size: int
 
-items = [
-  {"name": "Foo", "description": "There comes my hero"},
-  {"name": "Red", "description": "It's my aeroplane"},
-]
+class UnicornException(Exception):
+  def __init__(self, name: str):
+    self.name = name
+
+items = {"foo": "The Foo Wrestlers"}
 
 app = FastAPI()
-
-items = {
-  "foo": {"name": "Foo", "price": 50.2},
-  "bar": {"name": "Bar", "description": "The Bar fighters", "price": 62, "tax": 20.2},
-  "baz": {
-    "name": "Baz",
-    "description": "There goes my baz",
-    "price": 50.2,
-    "tax": 10.5,
-  },
-}
 
 @app.get("/keyword-weights/", response_model=Dict[str, float])
 async def read_keyword_weights():
@@ -164,10 +163,6 @@ async def read_file(file_path: str):
 
 fake_items_db = [{"item_name": "Foo"}, {"item_name": "Bar"}, {"item_name": "Baz"}]
 
-@app.get("/items/{item_id}", response_model=Union[PlaneItem, CarItem])
-async def read_item(item_id: str):
-  return items[item_id]
-
 @app.get("/items/{item_id}/public", response_model=Item, response_model_exclude=["tax"])
 async def read_item_public_data(item_id: str):
   return items[item_id]
@@ -221,3 +216,37 @@ async def main():
     </body>
   """
   return HTMLResponse(content=content)
+
+@app.exception_handler(UnicornException)
+async def unicorn_exception_handler(request: Request, exc: UnicornException):
+  return JSONResponse(
+    status_code=418,
+    content={"message": f"Opps! {exc.name} did something. There goes a rainbow..."},
+  )
+
+@app.get("/unicorns/{name}")
+async def read_unicorn(name: str):
+  if name == 'yolo':
+    raise UnicornException(name=name)
+  return {"unicorn_name": name}
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request, exc):
+  return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+  return JSONResponse(
+    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+    content=jsonable_encoder({"detail": exc.errors(), "body": exc.body}),
+  )
+  
+@app.get("/items/{item_id}")
+async def read_item(item_id: int):
+  if item_id == 3:
+    raise HTTPException(status_code=418, detail="Nope! I don't like 3.")
+  return {"item_id": item_id}
+
+@app.post("/itemss/")
+async def creating(item: Items):
+  return item

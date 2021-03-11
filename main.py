@@ -4,7 +4,7 @@ from fastapi import Cookie, FastAPI, Query, status, Form, File, UploadFile, HTTP
 from enum import Enum
 from typing import Dict, List, Set, Optional, Union
 from fastapi.encoders import jsonable_encoder
-from fastapi.param_functions import Body, Path
+from fastapi.param_functions import Body, Depends, Path
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 
@@ -119,10 +119,6 @@ async def create_mutiple_images(images: List[Image]):
 @app.post("/items/", status_code=status.HTTP_201_CREATED)
 async def create_item(name: str):
   return {"name": name}
-
-@app.get("/items/")
-async def reat_items(ads_in: Optional[str] = Cookie(None)):
-  return {"ads_in": ads_in}
 
 @app.put("/items/{item_id}")
 async def update_item(item_id: str, item: Item):
@@ -270,3 +266,14 @@ async def creating(item: Items):
 def update_item(id: str, item: Encode):
   json_compatible_item_data = jsonable_encoder(item)
   
+
+async def common_parameters(q: Optional[str] = None, skip: int = 0, limit: int = 100):
+  return {"q": q, "skip": skip, "limit": limit}
+
+@app.get("/items/")
+async def read_items(commons: dict = Depends(common_parameters)):
+  return commons
+
+@app.get("/users/")
+async def read_users(commons: dict = Depends(common_parameters)):
+  return commons

@@ -28,7 +28,7 @@ class Item(BaseModel):
   price: float
   tax: float = 10.5
   tags: List[str] = []
-  image: Optional[List[Image]] = None
+  # image: Optional[List[Image]] = None
 
 class Items(BaseModel):
   title: str
@@ -78,7 +78,11 @@ class UnicornException(Exception):
   def __init__(self, name: str):
     self.name = name
 
-items = {"foo": "The Foo Wrestlers"}
+items = {
+  "foo": {"name": "Foo", "price": 50.2},
+  "bar": {"name": "Bar", "description": "The bartenders", "price": 62, "tax": 20.2},
+  "baz": {"name": "Baz", "description": None, "price": 50.2, "tax": 10.5, "tags": []},
+}
 
 app = FastAPI()
 
@@ -121,26 +125,20 @@ async def reat_items(ads_in: Optional[str] = Cookie(None)):
   return {"ads_in": ads_in}
 
 @app.put("/items/{item_id}")
-async def update_item(
-  item_id: UUID,
-  start_datetime: Optional[datetime] = Body(None),
-  end_datetime: Optional[datetime] = Body(None),
-  repeat_at: Optional[time] = Body(None),
-  process_after: Optional[timedelta]= Body(None)
-):
+async def update_item(item_id: str, item: Item):
+  update_item_encoded = jsonable_encoder(item)
+  items[item_id] = update_item_encoded
+  return update_item_encoded
 
-  start_process = start_datetime + process_after
-  duration = end_datetime - start_process
+@app.patch("/items/{item_id}", response_model=Item)
+async def update_with_patch(item_id: str, item: Item):
+  stored_item_data = items[item_id]
+  stored_item_model = Item(**stored_item_data)
+  update_data = item.dict(exclude_unset=True)
+  updated_item = stored_item_model.copy(update=update_data)
+  items[item_id] = jsonable_encoder(updated_item)
+  return updated_item
 
-  return {
-    "Item_id": item_id,
-    "start_datetime": start_datetime,
-    "end_datetime": end_datetime,
-    "repeat_at": repeat_at,
-    "process_after": process_after,
-    "start_process": start_process,
-    "duration": duration
-  }
 
 @app.get('/users/me')
 async def read_user_me():
@@ -246,16 +244,9 @@ async def validation_exception_handler(request, exc):
     content=jsonable_encoder({"detail": exc.errors(), "body": exc.body}),
   )
   
-@app.get(
-  "/items/{item_id}", 
-  tags=["testing"], 
-  summary="Testing Summary", 
-  description="This is the description for this paths"
-)
-async def read_item(item_id: int):
-  if item_id == 3:
-    raise HTTPException(status_code=418, detail="Nope! I don't like 3.")
-  return {"item_id": item_id}
+@app.get("/items/{item_id}", response_model=Item)
+async def read_item(item_id: str):
+  return items[item_id]
 
 @app.post(
   "/itemss/", 

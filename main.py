@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Dict, List, Set, Optional, Union
 from fastapi import responses
 from fastapi.encoders import jsonable_encoder
-from fastapi.param_functions import Body, Depends, Path
+from fastapi.param_functions import Body, Depends, Header, Path
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 
@@ -284,9 +284,18 @@ def query_or_cookie_extractor(
     return last_query
   return q
 
-@app.get("/items/")
-async def read_items(query_or_default: str = Depends(query_or_cookie_extractor)):
-  return {"q_or_cookie": query_or_default}
+async def verify_token(x_token: str = Header(...)):
+  if x_token != "fake-super-secret-token":
+    raise HTTPException(status_code=400, detail="X-Token header invalid")
+
+async def verify_key(x_key: str = Header(...)):
+  if x_key != "fake-super-secret-key":
+    raise HTTPException(status_code=400, detail="X-Key header invalid")
+  return x_key
+
+@app.get("/items/", dependencies=[Depends(verify_token), Depends(verify_key)])
+async def read_items():
+  return [{"item": "Foo"}, {"item": "Bar"}]
 
 @app.get("/users/")
 async def read_users(commons: CommonQueryParams = Depends()):
